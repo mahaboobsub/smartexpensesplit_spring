@@ -11,28 +11,28 @@ SplitEase follows a stateless, three-tier enterprise web application architectur
 ```mermaid
 graph TD
     %% Frontend Layer
-    subgraph Client [Client Layer (HTML5 + CSS + Vanilla JS)]
-        UI[index.html / login.html / dashboard.html / group.html]
-        Fetch[Fetch API with Authorization: Bearer JWT]
+    subgraph Client ["Client Layer (HTML5 + CSS + Vanilla JS)"]
+        UI["index.html / login.html / dashboard.html / group.html"]
+        Fetch["Fetch API with Authorization: Bearer JWT"]
     end
 
     %% Web Security Filter Chain
-    subgraph Security [Security Filter Chain]
-        CORS[CorsFilter] --> CSRF[CSRF Disabler]
-        CSRF --> JWT_F[JwtFilter (OncePerRequestFilter)]
+    subgraph Security ["Security Filter Chain"]
+        CORS["CorsFilter"] --> CSRF["CSRF Disabler"]
+        CSRF --> JWT_F["JwtFilter (OncePerRequestFilter)"]
     end
 
     %% Spring Boot Backend Layers
-    subgraph Backend [Spring Boot Application Layer]
-        Controller[REST Controllers: Auth, Group, Expense, Balance, Settlement]
-        DTO[DTO Layer: request/ & response/]
-        Service[Service Layer: Business Logic, DebtSimplifier]
-        Repository[Spring Data JPA Repositories]
+    subgraph Backend ["Spring Boot Application Layer"]
+        Controller["REST Controllers: Auth, Group, Expense, Balance, Settlement"]
+        DTO["DTO Layer: request/ & response/"]
+        Service["Service Layer: Business Logic, DebtSimplifier"]
+        Repository["Spring Data JPA Repositories"]
     end
 
     %% Database
-    subgraph Storage [Database Layer]
-        MySQL[(MySQL 8 Database)]
+    subgraph Storage ["Database Layer"]
+        MySQL[("MySQL 8 Database")]
     end
 
     %% Connections
