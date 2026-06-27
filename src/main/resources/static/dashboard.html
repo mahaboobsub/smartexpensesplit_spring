@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — SplitEase</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: radial-gradient(circle at top right, #111827, #030712);
+    }
+    .glass {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+  </style>
+</head>
+<body class="text-gray-100 min-h-screen flex flex-col justify-between">
+
+  <!-- Header -->
+  <header class="max-w-7xl mx-auto w-full px-6 py-6 flex justify-between items-center border-b border-white/5">
+    <div class="flex items-center gap-2">
+      <span class="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">SplitEase</span>
+    </div>
+    <div class="flex items-center gap-6">
+      <span id="welcomeMsg" class="text-sm font-semibold text-gray-300"></span>
+      <button id="logoutBtn" class="text-sm font-semibold hover:text-red-400 transition">Log out</button>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto w-full px-6 flex-1 py-12 space-y-12">
+    <!-- Top Row -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div>
+        <h1 class="text-4xl font-extrabold tracking-tight">Your Groups</h1>
+        <p class="text-gray-400 text-sm mt-1">Select a group to log expenses and check simplified balances.</p>
+      </div>
+      <button id="openCreateModalBtn" class="bg-green-500 hover:bg-green-600 text-gray-900 font-extrabold px-6 py-3 rounded-2xl transition shadow-lg shadow-green-500/20 text-sm">
+        + Create Group
+      </button>
+    </div>
+
+    <!-- Groups Grid -->
+    <div id="groupsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Cards loaded dynamically -->
+      <div id="loadingIndicator" class="col-span-full text-center py-12 text-gray-500 text-sm font-semibold">
+        Loading your groups...
+      </div>
+    </div>
+  </main>
+
+  <!-- Create Group Modal -->
+  <div id="createModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex justify-center items-center p-6 z-50">
+    <div class="glass w-full max-w-md p-8 rounded-3xl space-y-6 shadow-2xl relative">
+      <div class="flex justify-between items-center">
+        <h3 class="text-xl font-bold">New Group</h3>
+        <button id="closeCreateModalBtn" class="text-gray-400 hover:text-gray-200 text-lg">&times;</button>
+      </div>
+
+      <form id="createGroupForm" class="space-y-4">
+        <div id="modalAlert" class="hidden p-4 rounded-xl text-sm font-semibold bg-red-500/10 border border-red-500/20 text-red-400"></div>
+
+        <div>
+          <label for="groupName" class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Group Name</label>
+          <input type="text" id="groupName" required placeholder="e.g. Roommates 402" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-green-500 transition text-gray-100">
+        </div>
+
+        <div>
+          <label for="groupDesc" class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Description (Optional)</label>
+          <textarea id="groupDesc" rows="3" placeholder="e.g. Shared rent and grocery expenses" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-green-500 transition text-gray-100 resize-none"></textarea>
+        </div>
+
+        <button type="submit" id="modalSubmitBtn" class="w-full bg-green-500 hover:bg-green-600 text-gray-900 font-extrabold py-3.5 rounded-xl transition shadow-lg shadow-green-500/20 text-sm">
+          Create Group
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="max-w-7xl mx-auto w-full px-6 py-6 text-center text-gray-500 text-xs border-t border-white/5">
+    &copy; 2026 SplitEase. All rights reserved.
+  </footer>
+
+  <script>
+    // JWT Authentication Guard
+    const token = localStorage.getItem('token');
+    const userName = localStorage.getItem('userName');
+    if (!token) {
+      window.location.href = 'login.html';
+    }
+
+    // Set Welcome message
+    document.getElementById('welcomeMsg').textContent = `Hello, ${userName}!`;
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.clear();
+      window.location.href = 'login.html';
+    });
+
+    // Modal control
+    const createModal = document.getElementById('createModal');
+    const openModalBtn = document.getElementById('openCreateModalBtn');
+    const closeModalBtn = document.getElementById('closeCreateModalBtn');
+
+    openModalBtn.addEventListener('click', () => {
+      createModal.classList.remove('hidden');
+      document.getElementById('groupName').focus();
+    });
+
+    closeModalBtn.addEventListener('click', () => {
+      createModal.classList.add('hidden');
+      document.getElementById('createGroupForm').reset();
+      document.getElementById('modalAlert').classList.add('hidden');
+    });
+
+    // Load groups
+    async function loadGroups() {
+      const grid = document.getElementById('groupsGrid');
+      const loader = document.getElementById('loadingIndicator');
+
+      try {
+        const response = await fetch('/api/groups', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.status === 401) {
+          localStorage.clear();
+          window.location.href = 'login.html';
+          return;
+        }
+
+        const groups = await response.json();
+        
+        // Remove loader and clear grid
+        if (loader) loader.remove();
+        grid.innerHTML = '';
+
+        if (groups.length === 0) {
+          const noGroupsMsg = document.createElement('div');
+          noGroupsMsg.className = 'col-span-full text-center py-12 text-gray-500 text-sm font-semibold';
+          noGroupsMsg.textContent = "You don't belong to any groups yet. Create one to get started!";
+          grid.appendChild(noGroupsMsg);
+          return;
+        }
+
+        groups.forEach(g => {
+          const card = document.createElement('div');
+          card.className = 'glass p-6 rounded-3xl hover:bg-white/5 transition cursor-pointer flex flex-col justify-between gap-4 border border-white/5';
+          
+          card.addEventListener('click', () => {
+            window.location.href = `group.html?id=${g.groupId}`;
+          });
+
+          const topSection = document.createElement('div');
+          topSection.className = 'space-y-2';
+
+          const title = document.createElement('h3');
+          title.className = 'text-xl font-bold tracking-tight text-white';
+          title.textContent = g.groupName;
+
+          const desc = document.createElement('p');
+          desc.className = 'text-sm text-gray-400 line-clamp-2';
+          desc.textContent = g.description || 'No description provided.';
+
+          topSection.appendChild(title);
+          topSection.appendChild(desc);
+
+          const bottomSection = document.createElement('div');
+          bottomSection.className = 'flex justify-between items-center pt-4 border-t border-white/5 text-xs text-gray-500';
+
+          const membersCount = document.createElement('span');
+          membersCount.className = 'font-semibold text-green-400 bg-green-500/10 px-2 py-0.5 rounded-md';
+          membersCount.textContent = `${g.members ? g.members.length : 0} members`;
+
+          const owner = document.createElement('span');
+          owner.textContent = `By ${g.createdByUserName}`;
+
+          bottomSection.appendChild(membersCount);
+          bottomSection.appendChild(owner);
+
+          card.appendChild(topSection);
+          card.appendChild(bottomSection);
+
+          grid.appendChild(card);
+        });
+
+      } catch (err) {
+        if (loader) {
+          loader.textContent = 'Error loading groups. Please reload page.';
+        }
+      }
+    }
+
+    // Handle Create Group Form
+    const createGroupForm = document.getElementById('createGroupForm');
+    createGroupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const modalAlert = document.getElementById('modalAlert');
+      const submitBtn = document.getElementById('modalSubmitBtn');
+
+      modalAlert.classList.add('hidden');
+      modalAlert.textContent = '';
+
+      const name = document.getElementById('groupName').value.trim();
+      const description = document.getElementById('groupDesc').value.trim();
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating...';
+
+      try {
+        const response = await fetch('/api/groups', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ name, description })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          createModal.classList.add('hidden');
+          createGroupForm.reset();
+          loadGroups();
+        } else {
+          let errMsg = data.error || 'Failed to create group';
+          if (data && typeof data === 'object' && !data.error) {
+            errMsg = Object.values(data).join(', ');
+          }
+          modalAlert.textContent = errMsg;
+          modalAlert.classList.remove('hidden');
+        }
+      } catch (err) {
+        modalAlert.textContent = 'Network error. Please try again.';
+        modalAlert.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create Group';
+      }
+    });
+
+    // Run on load
+    loadGroups();
+  </script>
+</body>
+</html>

@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Group Details — SplitEase</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: radial-gradient(circle at top left, #111827, #030712);
+    }
+    .glass {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+  </style>
+</head>
+<body class="text-gray-100 min-h-screen flex flex-col justify-between">
+
+  <!-- Header -->
+  <header class="max-w-7xl mx-auto w-full px-6 py-6 flex justify-between items-center border-b border-white/5">
+    <div class="flex items-center gap-4">
+      <a href="dashboard.html" class="text-gray-400 hover:text-white transition text-sm font-semibold">&larr; Back to Dashboard</a>
+      <span class="text-gray-600">|</span>
+      <span class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">SplitEase</span>
+    </div>
+    <div class="flex items-center gap-6">
+      <button id="leaveGroupBtn" class="text-sm font-semibold text-red-400 hover:text-red-300 transition">Leave Group</button>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto w-full px-6 flex-1 py-10 space-y-8">
+    <!-- Group Metadata Row -->
+    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 pb-6 border-b border-white/5">
+      <div>
+        <h1 id="groupName" class="text-3xl font-extrabold tracking-tight">Loading Group...</h1>
+        <p id="groupDesc" class="text-gray-400 text-sm mt-1"></p>
+        <p id="groupAdmin" class="text-gray-500 text-xs mt-1"></p>
+      </div>
+      
+      <!-- Actions Box -->
+      <div class="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+        <!-- Invite Member Form -->
+        <form id="inviteForm" class="flex gap-2 w-full sm:w-auto">
+          <input type="email" id="inviteEmail" required placeholder="tabassum@example.com" class="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-green-500 transition text-gray-100 placeholder-gray-500">
+          <button type="submit" class="bg-green-500 hover:bg-green-600 text-gray-900 font-extrabold px-4 py-2 rounded-xl transition text-sm whitespace-nowrap">
+            Invite
+          </button>
+        </form>
+        
+        <!-- Add Expense Link -->
+        <a id="addExpenseBtn" href="#" class="bg-white/10 hover:bg-white/15 text-gray-200 text-center font-bold px-6 py-2.5 rounded-xl transition text-sm">
+          + Add Expense
+        </a>
+      </div>
+    </div>
+
+    <!-- Alert Box for operations -->
+    <div id="statusAlert" class="hidden p-4 rounded-xl text-sm font-semibold"></div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      
+      <!-- Left Column: Balances and Settlements -->
+      <div class="lg:col-span-1 space-y-8">
+        
+        <!-- Stat Card: Paid Most -->
+        <div class="glass p-6 rounded-3xl space-y-4">
+          <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Top Spender</h3>
+          <div class="flex items-center gap-3">
+            <span class="text-2xl">🏆</span>
+            <div>
+              <p id="topSpenderName" class="font-bold text-white">N/A</p>
+              <p id="topSpenderAmount" class="text-xs text-gray-400">No expenses recorded yet.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Net Balances Card -->
+        <div class="glass p-6 rounded-3xl space-y-4">
+          <h3 class="text-sm font-bold border-b border-white/5 pb-2">Net Balances</h3>
+          <div id="balancesList" class="space-y-3">
+            <!-- Loaded dynamically -->
+          </div>
+        </div>
+
+        <!-- Debt Simplification Card -->
+        <div class="glass p-6 rounded-3xl space-y-4">
+          <h3 class="text-sm font-bold border-b border-white/5 pb-2">Suggested Settlements</h3>
+          <div id="simplificationsList" class="space-y-3">
+            <!-- Loaded dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Expense History & Settlement Log -->
+      <div class="lg:col-span-2 space-y-8">
+        
+        <!-- Tabs Headers -->
+        <div class="flex gap-4 border-b border-white/5 pb-2">
+          <button id="expensesTabBtn" class="text-sm font-bold text-white border-b-2 border-green-500 pb-2 transition">
+            Expenses History
+          </button>
+          <button id="settlementsTabBtn" class="text-sm font-semibold text-gray-400 hover:text-white pb-2 transition">
+            Settlement Log
+          </button>
+        </div>
+
+        <!-- Tab 1: Expenses History -->
+        <div id="expensesTab" class="space-y-4">
+          <div id="expensesList" class="space-y-4">
+            <!-- Loaded dynamically -->
+          </div>
+        </div>
+
+        <!-- Tab 2: Settlement Log -->
+        <div id="settlementsTab" class="space-y-4 hidden">
+          <div id="settlementsList" class="space-y-4">
+            <!-- Loaded dynamically -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="max-w-7xl mx-auto w-full px-6 py-6 text-center text-gray-500 text-xs border-t border-white/5">
+    &copy; 2026 SplitEase. All rights reserved.
+  </footer>
+
+  <script>
+    // Get query params
+    const urlParams = new URLSearchParams(window.location.search);
+    const groupId = urlParams.get('id');
+
+    if (!groupId) {
+      window.location.href = 'dashboard.html';
+    }
+
+    const token = localStorage.getItem('token');
+    const currentUserId = parseInt(localStorage.getItem('userId'), 10);
+
+    if (!token) {
+      window.location.href = 'login.html';
+    }
+
+    // Set Add Expense link
+    document.getElementById('addExpenseBtn').href = `add-expense.html?groupId=${groupId}`;
+
+    // App state variables
+    let isGroupAdmin = false;
+    let groupMembers = [];
+
+    // Alert helper
+    function showAlert(text, type = 'success') {
+      const alertBox = document.getElementById('statusAlert');
+      alertBox.textContent = text;
+      alertBox.className = 'p-4 rounded-xl text-sm font-semibold ';
+      if (type === 'success') {
+        alertBox.classList.add('bg-green-500/10', 'border', 'border-green-500/20', 'text-green-400');
+      } else {
+        alertBox.classList.add('bg-red-500/10', 'border', 'border-red-500/20', 'text-red-400');
+      }
+      alertBox.classList.remove('hidden');
+      setTimeout(() => {
+        alertBox.classList.add('hidden');
+      }, 5000);
+    }
+
+    // Tabs toggle
+    const expensesTabBtn = document.getElementById('expensesTabBtn');
+    const settlementsTabBtn = document.getElementById('settlementsTabBtn');
+    const expensesTab = document.getElementById('expensesTab');
+    const settlementsTab = document.getElementById('settlementsTab');
+
+    expensesTabBtn.addEventListener('click', () => {
+      expensesTab.classList.remove('hidden');
+      settlementsTab.classList.add('hidden');
+      expensesTabBtn.className = 'text-sm font-bold text-white border-b-2 border-green-500 pb-2 transition';
+      settlementsTabBtn.className = 'text-sm font-semibold text-gray-400 hover:text-white pb-2 transition';
+    });
+
+    settlementsTabBtn.addEventListener('click', () => {
+      expensesTab.classList.add('hidden');
+      settlementsTab.classList.remove('hidden');
+      expensesTabBtn.className = 'text-sm font-semibold text-gray-400 hover:text-white pb-2 transition';
+      settlementsTabBtn.className = 'text-sm font-bold text-white border-b-2 border-green-500 pb-2 transition';
+    });
+
+    // Load group details
+    async function loadGroupMetadata() {
+      try {
+        const response = await fetch(`/api/groups/${groupId}`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          window.location.href = 'dashboard.html';
+          return;
+        }
+
+        const data = await response.json();
+        
+        document.getElementById('groupName').textContent = data.groupName;
+        document.getElementById('groupDesc').textContent = data.description || 'No description provided.';
+        document.getElementById('groupAdmin').textContent = `Admin: ${data.createdByUserName}`;
+
+        isGroupAdmin = data.createdByUserId === currentUserId;
+        groupMembers = data.members || [];
+      } catch (err) {
+        showAlert('Error loading group data.', 'error');
+      }
+    }
+
+    // Invite member form
+    const inviteForm = document.getElementById('inviteForm');
+    inviteForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const emailInput = document.getElementById('inviteEmail');
+      const email = emailInput.value.trim();
+
+      try {
+        const response = await fetch(`/api/groups/${groupId}/members`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ email })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showAlert('Member invited successfully!');
+          emailInput.value = '';
+          loadGroupMetadata();
+          loadBalances();
+        } else {
+          showAlert(data.error || 'Failed to invite member.', 'error');
+        }
+      } catch (err) {
+        showAlert('Network error. Failed to invite.', 'error');
+      }
+    });
+
+    // Leave group
+    document.getElementById('leaveGroupBtn').addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to leave this group?')) return;
+
+      try {
+        const response = await fetch(`/api/groups/${groupId}/members/me`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          alert('You successfully left the group.');
+          window.location.href = 'dashboard.html';
+        } else {
+          showAlert(data.error || 'Failed to leave group.', 'error');
+        }
+      } catch (err) {
+        showAlert('Network error. Failed to leave.', 'error');
+      }
+    });
+
+    // Load balances and debt simplification
+    async function loadBalances() {
+      const balancesList = document.getElementById('balancesList');
+      const simplificationsList = document.getElementById('simplificationsList');
+
+      balancesList.innerHTML = '<p class="text-xs text-gray-500">Loading balances...</p>';
+      simplificationsList.innerHTML = '<p class="text-xs text-gray-500">Calculating simplification...</p>';
+
+      try {
+        const response = await fetch(`/api/groups/${groupId}/balances`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+
+        // 1. Render Net Balances
+        balancesList.innerHTML = '';
+        if (data.netBalances.length === 0) {
+          balancesList.innerHTML = '<p class="text-xs text-gray-500">No balances computed.</p>';
+        } else {
+          data.netBalances.forEach(mb => {
+            const item = document.createElement('div');
+            item.className = 'flex justify-between items-center text-sm py-1.5 border-b border-white/5 last:border-0';
+
+            const name = document.createElement('span');
+            name.className = 'font-medium';
+            name.textContent = mb.userName;
+
+            const val = document.createElement('span');
+            val.className = 'font-bold';
+            
+            const balNum = parseFloat(mb.balance);
+            if (balNum > 0) {
+              val.className += ' text-green-400';
+              val.textContent = `+₹${balNum.toFixed(2)}`;
+            } else if (balNum < 0) {
+              val.className += ' text-red-400';
+              val.textContent = `-₹${Math.abs(balNum).toFixed(2)}`;
+            } else {
+              val.className += ' text-gray-500';
+              val.textContent = `₹0.00`;
+            }
+
+            item.appendChild(name);
+            item.appendChild(val);
+            balancesList.appendChild(item);
+          });
+        }
+
+        // 2. Render Suggested Settlements
+        simplificationsList.innerHTML = '';
+        if (data.simplifiedSettlements.length === 0) {
+          simplificationsList.innerHTML = '<div class="p-4 bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-semibold rounded-2xl text-center">🎉 Everyone is fully settled!</div>';
+        } else {
+          data.simplifiedSettlements.forEach(s => {
+            const item = document.createElement('div');
+            item.className = 'p-3 bg-white/5 border border-white/5 rounded-2xl flex justify-between items-center gap-3 text-xs';
+
+            const detail = document.createElement('div');
+            detail.className = 'space-y-1';
+
+            const namesLine = document.createElement('p');
+            namesLine.className = 'font-semibold text-gray-200';
+            
+            const fromSpan = document.createElement('span');
+            fromSpan.className = 'text-red-400';
+            fromSpan.textContent = s.fromUserName;
+
+            const payText = document.createTextNode(' pays ');
+
+            const toSpan = document.createElement('span');
+            toSpan.className = 'text-green-400';
+            toSpan.textContent = s.toUserName;
+
+            namesLine.appendChild(fromSpan);
+            namesLine.appendChild(payText);
+            namesLine.appendChild(toSpan);
+
+            const amtLine = document.createElement('p');
+            amtLine.className = 'text-sm font-bold text-white';
+            amtLine.textContent = `₹${parseFloat(s.amount).toFixed(2)}`;
+
+            detail.appendChild(namesLine);
+            detail.appendChild(amtLine);
+
+            const actionBtn = document.createElement('button');
+            actionBtn.className = 'bg-green-500 hover:bg-green-600 text-gray-900 font-extrabold px-3 py-1.5 rounded-xl transition text-[10px] shadow-sm';
+            actionBtn.textContent = 'Settle';
+            actionBtn.addEventListener('click', () => settleDirectly(s.fromUserId, s.toUserId, s.amount));
+
+            item.appendChild(detail);
+            item.appendChild(actionBtn);
+            simplificationsList.appendChild(item);
+          });
+        }
+
+      } catch (err) {
+        balancesList.innerHTML = '<p class="text-xs text-red-400">Failed to load balances.</p>';
+        simplificationsList.innerHTML = '<p class="text-xs text-red-400">Failed to load suggested settlements.</p>';
+      }
+    }
+
+    // Direct Settle Action
+    async function settleDirectly(fromId, toId, amount) {
+      if (!confirm('Mark this transaction as settled in cash?')) return;
+
+      try {
+        const response = await fetch(`/api/groups/${groupId}/settlements`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            fromUserId: fromId,
+            toUserId: toId,
+            amount: amount,
+            note: 'Settled via SplitEase'
+          })
+        });
+
+        if (response.ok) {
+          showAlert('Settlement logged successfully!');
+          loadBalances();
+          loadExpenses();
+          loadSettlementsLog();
+        } else {
+          showAlert('Failed to log settlement.', 'error');
+        }
+      } catch (err) {
+        showAlert('Network error.', 'error');
+      }
+    }
+
+    // Load expenses history
+    async function loadExpenses() {
+      const list = document.getElementById('expensesList');
+      list.innerHTML = '<p class="text-xs text-gray-500 text-center py-6">Loading expenses...</p>';
+
+      try {
+        const response = await fetch(`/api/groups/${groupId}/expenses`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) return;
+
+        const expenses = await response.json();
+        list.innerHTML = '';
+
+        // Calculate paid most spender metric
+        if (expenses.length === 0) {
+          list.innerHTML = '<p class="text-xs text-gray-500 text-center py-6">No expenses logged in this group yet.</p>';
+          document.getElementById('topSpenderName').textContent = 'N/A';
+          document.getElementById('topSpenderAmount').textContent = 'No expenses recorded yet.';
+          return;
+        }
+
+        const paidSums = {};
+        expenses.forEach(e => {
+          paidSums[e.paidByUserName] = (paidSums[e.paidByUserName] || 0) + parseFloat(e.totalAmount);
+        });
+
+        let topSpender = 'N/A';
+        let maxPaid = 0;
+        for (const [name, sum] of Object.entries(paidSums)) {
+          if (sum > maxPaid) {
+            maxPaid = sum;
+            topSpender = name;
+          }
+        }
+        document.getElementById('topSpenderName').textContent = topSpender;
+        document.getElementById('topSpenderAmount').textContent = `Paid a total of ₹${maxPaid.toFixed(2)}`;
+
+        // Render cards
+        expenses.forEach(exp => {
+          const card = document.createElement('div');
+          card.className = 'glass p-5 rounded-2xl flex justify-between items-start gap-4 border border-white/5';
+
+          const details = document.createElement('div');
+          details.className = 'space-y-1';
+
+          const desc = document.createElement('h4');
+          desc.className = 'font-bold text-gray-100 text-sm';
+          desc.textContent = exp.description;
+
+          const payerLine = document.createElement('p');
+          payerLine.className = 'text-xs text-gray-400';
+          
+          const payerBold = document.createElement('strong');
+          payerBold.className = 'text-gray-300';
+          payerBold.textContent = exp.paidByUserName;
+
+          payerLine.appendChild(payerBold);
+          payerLine.appendChild(document.createTextNode(` paid ₹${parseFloat(exp.totalAmount).toFixed(2)}`));
+
+          // Splits text
+          const splitAmongUsers = exp.splits.map(s => s.userName).join(', ');
+          const splitLine = document.createElement('p');
+          splitLine.className = 'text-[10px] text-gray-500 leading-tight';
+          splitLine.textContent = `Split equally among: ${splitAmongUsers}`;
+
+          const date = document.createElement('p');
+          date.className = 'text-[10px] text-gray-500';
+          date.textContent = `Date: ${exp.expenseDate}`;
+
+          details.appendChild(desc);
+          details.appendChild(payerLine);
+          details.appendChild(splitLine);
+          details.appendChild(date);
+
+          const rightBox = document.createElement('div');
+          rightBox.className = 'flex flex-col items-end gap-3';
+
+          const amt = document.createElement('span');
+          amt.className = 'text-base font-extrabold text-white';
+          amt.textContent = `₹${parseFloat(exp.totalAmount).toFixed(2)}`;
+
+          rightBox.appendChild(amt);
+
+          // Admin delete button
+          if (isGroupAdmin) {
+            const delBtn = document.createElement('button');
+            delBtn.className = 'text-gray-500 hover:text-red-400 transition';
+            delBtn.title = 'Delete expense';
+            
+            // Inline trash SVG
+            delBtn.innerHTML = `
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            `;
+
+            delBtn.addEventListener('click', () => deleteExpense(exp.expenseId));
+            rightBox.appendChild(delBtn);
+          }
+
+          card.appendChild(details);
+          card.appendChild(rightBox);
+          list.appendChild(card);
+        });
+
+      } catch (err) {
+        list.innerHTML = '<p class="text-xs text-red-400 text-center py-6">Failed to load expenses.</p>';
+      }
+    }
+
+    // Delete Expense Call
+    async function deleteExpense(expId) {
+      if (!confirm('Are you sure you want to delete this expense? This will recompute net balances.')) return;
+
+      try {
+        const response = await fetch(`/api/groups/${groupId}/expenses/${expId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          showAlert('Expense deleted successfully.');
+          loadBalances();
+          loadExpenses();
+          loadSettlementsLog();
+        } else {
+          const data = await response.json();
+          showAlert(data.error || 'Failed to delete expense.', 'error');
+        }
+      } catch (err) {
+        showAlert('Network error.', 'error');
+      }
+    }
+
+    // Load settlements log
+    async function loadSettlementsLog() {
+      const list = document.getElementById('settlementsList');
+      list.innerHTML = '<p class="text-xs text-gray-500 text-center py-6">Loading settlements log...</p>';
+
+      try {
+        const response = await fetch(`/api/groups/${groupId}/settlements`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) return;
+
+        const settlements = await response.json();
+        list.innerHTML = '';
+
+        if (settlements.length === 0) {
+          list.innerHTML = '<p class="text-xs text-gray-500 text-center py-6">No cash settlements logged in this group yet.</p>';
+          return;
+        }
+
+        settlements.forEach(s => {
+          const card = document.createElement('div');
+          card.className = 'glass p-4 rounded-2xl flex justify-between items-center gap-4 border border-white/5';
+
+          const details = document.createElement('div');
+          details.className = 'space-y-1';
+
+          const text = document.createElement('p');
+          text.className = 'text-xs text-gray-300';
+          
+          const payerBold = document.createElement('strong');
+          payerBold.className = 'text-red-400';
+          payerBold.textContent = s.paidByUserName;
+
+          const paidToBold = document.createElement('strong');
+          paidToBold.className = 'text-green-400';
+          paidToBold.textContent = s.paidToUserName;
+
+          text.appendChild(payerBold);
+          text.appendChild(document.createTextNode(' paid '));
+          text.appendChild(paidToBold);
+
+          const note = document.createElement('p');
+          note.className = 'text-[10px] text-gray-500';
+          note.textContent = `Note: ${s.note || 'Cash payment'}`;
+
+          details.appendChild(text);
+          details.appendChild(note);
+
+          const rightBox = document.createElement('div');
+          rightBox.className = 'text-right';
+
+          const amt = document.createElement('span');
+          amt.className = 'text-sm font-extrabold text-green-400';
+          amt.textContent = `₹${parseFloat(s.amount).toFixed(2)}`;
+
+          const dateStr = s.settledAt ? s.settledAt.substring(0, 10) : '';
+          const date = document.createElement('p');
+          date.className = 'text-[9px] text-gray-500';
+          date.textContent = dateStr;
+
+          rightBox.appendChild(amt);
+          rightBox.appendChild(date);
+
+          card.appendChild(details);
+          card.appendChild(rightBox);
+          list.appendChild(card);
+        });
+
+      } catch (err) {
+        list.innerHTML = '<p class="text-xs text-red-400 text-center py-6">Failed to load settlements log.</p>';
+      }
+    }
+
+    // Run on load
+    async function initPage() {
+      await loadGroupMetadata();
+      loadBalances();
+      loadExpenses();
+      loadSettlementsLog();
+    }
+
+    initPage();
+  </script>
+</body>
+</html>

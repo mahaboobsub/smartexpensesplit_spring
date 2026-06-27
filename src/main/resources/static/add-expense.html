@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Expense — SplitEase</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: radial-gradient(circle at bottom left, #111827, #030712);
+    }
+    .glass {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+  </style>
+</head>
+<body class="text-gray-100 min-h-screen flex flex-col justify-between">
+
+  <!-- Header -->
+  <header class="max-w-7xl mx-auto w-full px-6 py-6 flex justify-between items-center border-b border-white/5">
+    <div class="flex items-center gap-4">
+      <a id="backBtn" href="#" class="text-gray-400 hover:text-white transition text-sm font-semibold">&larr; Cancel</a>
+      <span class="text-gray-600">|</span>
+      <span class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">SplitEase</span>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto w-full px-6 flex-1 py-12 flex justify-center items-center">
+    <div class="w-full max-w-lg space-y-8">
+      <div class="text-center">
+        <h1 class="text-3xl font-extrabold tracking-tight">Log New Expense</h1>
+        <p class="text-gray-400 text-sm mt-1">Fill in the details to divide costs equally among selected members.</p>
+      </div>
+
+      <div class="glass p-8 rounded-3xl shadow-2xl">
+        <form id="expenseForm" class="space-y-6">
+          <div id="alertBox" class="hidden p-4 rounded-xl text-sm font-semibold bg-red-500/10 border border-red-500/20 text-red-400"></div>
+
+          <div>
+            <label for="desc" class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Description</label>
+            <input type="text" id="desc" required placeholder="e.g. Weekly Groceries" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-green-500 transition text-gray-100">
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="amount" class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Total Amount (₹)</label>
+              <input type="number" id="amount" required step="0.01" min="0.01" placeholder="0.00" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-green-500 transition text-gray-100">
+            </div>
+
+            <div>
+              <label for="date" class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Date</label>
+              <input type="date" id="date" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-green-500 transition text-gray-100">
+            </div>
+          </div>
+
+          <div>
+            <label for="paidBy" class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Paid By</label>
+            <select id="paidBy" required class="w-full bg-gray-900 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-green-500 transition text-gray-100">
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+
+          <!-- Split Among Checklist -->
+          <div>
+            <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Split Among (Equal Split)</label>
+            <div id="splitList" class="space-y-2 max-h-40 overflow-y-auto bg-white/5 p-4 rounded-xl border border-white/10">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <button type="submit" id="submitBtn" class="w-full bg-green-500 hover:bg-green-600 text-gray-900 font-extrabold py-3.5 rounded-xl transition shadow-lg shadow-green-500/20 text-sm">
+            Save Expense
+          </button>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="max-w-7xl mx-auto w-full px-6 py-6 text-center text-gray-500 text-xs border-t border-white/5">
+    &copy; 2026 SplitEase. All rights reserved.
+  </footer>
+
+  <script>
+    // Get parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const groupId = urlParams.get('groupId');
+
+    if (!groupId) {
+      window.location.href = 'dashboard.html';
+    }
+
+    const token = localStorage.getItem('token');
+    const currentUserId = parseInt(localStorage.getItem('userId'), 10);
+
+    if (!token) {
+      window.location.href = 'login.html';
+    }
+
+    // Set Cancel button redirection
+    document.getElementById('backBtn').href = `group.html?id=${groupId}`;
+
+    // Set today's date as default
+    document.getElementById('date').value = new Date().toISOString().substring(0, 10);
+
+    // Fetch members to populate dropdown and list
+    async function loadGroupMembers() {
+      const paidBySelect = document.getElementById('paidBy');
+      const splitList = document.getElementById('splitList');
+
+      try {
+        const response = await fetch(`/api/groups/${groupId}`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          window.location.href = 'dashboard.html';
+          return;
+        }
+
+        const group = await response.json();
+        
+        paidBySelect.innerHTML = '';
+        splitList.innerHTML = '';
+
+        if (!group.members || group.members.length === 0) return;
+
+        group.members.forEach(member => {
+          // 1. Populate Payer select option
+          const opt = document.createElement('option');
+          opt.value = member.userId;
+          opt.textContent = member.fullName;
+          if (member.userId === currentUserId) {
+            opt.selected = true;
+          }
+          paidBySelect.appendChild(opt);
+
+          // 2. Populate Checklist item
+          const label = document.createElement('label');
+          label.className = 'flex items-center gap-3 cursor-pointer py-1';
+
+          const chk = document.createElement('input');
+          chk.type = 'checkbox';
+          chk.value = member.userId;
+          chk.checked = true; // checked by default
+          chk.className = 'w-4 h-4 rounded text-green-500 focus:ring-green-500 bg-white/5 border-white/10';
+
+          const nameSpan = document.createElement('span');
+          nameSpan.className = 'text-sm text-gray-300';
+          nameSpan.textContent = member.fullName;
+
+          label.appendChild(chk);
+          label.appendChild(nameSpan);
+          splitList.appendChild(label);
+        });
+
+      } catch (err) {
+        document.getElementById('alertBox').textContent = 'Error loading group members.';
+        document.getElementById('alertBox').classList.remove('hidden');
+      }
+    }
+
+    // Form submit
+    const expenseForm = document.getElementById('expenseForm');
+    expenseForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const alertBox = document.getElementById('alertBox');
+      const submitBtn = document.getElementById('submitBtn');
+
+      alertBox.classList.add('hidden');
+      alertBox.textContent = '';
+
+      const description = document.getElementById('desc').value.trim();
+      const totalAmount = parseFloat(document.getElementById('amount').value);
+      const date = document.getElementById('date').value;
+      const paidBy = parseInt(document.getElementById('paidBy').value, 10);
+
+      // Collect checked split user IDs
+      const checkboxes = document.querySelectorAll('#splitList input[type="checkbox"]:checked');
+      const splitAmong = Array.from(checkboxes).map(chk => parseInt(chk.value, 10));
+
+      if (splitAmong.length === 0) {
+        alertBox.textContent = 'Please select at least one person to split the expense with.';
+        alertBox.classList.remove('hidden');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Saving...';
+
+      try {
+        const response = await fetch(`/api/groups/${groupId}/expenses`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            description,
+            totalAmount,
+            paidBy,
+            splitAmong,
+            date
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          window.location.href = `group.html?id=${groupId}`;
+        } else {
+          let errMsg = data.error || 'Failed to save expense';
+          if (data && typeof data === 'object' && !data.error) {
+            errMsg = Object.values(data).join(', ');
+          }
+          alertBox.textContent = errMsg;
+          alertBox.classList.remove('hidden');
+        }
+      } catch (err) {
+        alertBox.textContent = 'Network error. Please try again.';
+        alertBox.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Save Expense';
+      }
+    });
+
+    // Run on load
+    loadGroupMembers();
+  </script>
+</body>
+</html>
